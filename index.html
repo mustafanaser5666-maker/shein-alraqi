@@ -21,7 +21,7 @@
     <!-- شاشة التحميل -->
     <main id="loading-view" class="hidden max-w-md mx-auto w-full px-4 py-20 text-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
-        <p class="mt-4 text-slate-600 font-bold">جاري الاتصال بـ شي إن...</p>
+        <p class="mt-4 text-slate-600 font-bold">جاري قراءة السلة من شي إن... قد يستغرق ثواني</p>
     </main>
 
     <!-- شاشة النتائج -->
@@ -45,36 +45,52 @@
             document.getElementById('loading-view').classList.remove('hidden');
 
             try {
-                // استخدام device_type=mobile و premium=true لكسر حماية شي إن
+                // طلب الصفحة مع تفعيل التصفح الحقيقي والموبايل
                 const targetApiUrl = `https://api.scraperapi.com/?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(cartUrl)}&render=true&premium=true&device_type=mobile`;
                 
                 const response = await fetch(targetApiUrl);
                 const htmlText = await response.text();
                 
-                // البحث عن السعر الكلي باستخدام نمط نصي مرن
-                // يبحث عن كلمة Total أو Subtotal وبعدها رقم السعر
-                const totalMatch = htmlText.match(/(?:Subtotal|Total)[\s\S]{0,100}?(?:\$|US\$)\s?(\d+\.?\d*)/i);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const pageTitle = doc.title || "لا يوجد عنوان";
+
+                // استخراج النصوص بالكامل
+                const bodyText = doc.body ? doc.body.innerText : "";
                 
-                let totalUSD = 0;
+                // البحث عن كلمة Total أو Subtotal أو المجموع يليها أي رقم (لجميع العملات)
+                const totalMatch = bodyText.match(/(?:Total|Subtotal|المجموع|الإجمالي)[\s\S]{0,100}?(\d+[\.,]\d+)/i);
+                
+                let totalAmount = 0;
+
                 if (totalMatch && totalMatch[1]) {
-                    totalUSD = parseFloat(totalMatch[1]);
+                    totalAmount = parseFloat(totalMatch[1].replace(',', '.'));
                 } else {
-                    // محاولة ثانية: البحث عن أي رقم كبير بعد علامة الدولار إذا فشل البحث عن كلمة Total
-                    const allPrices = htmlText.match(/\$\s?\d+\.?\d*/g);
-                    if(allPrices) {
-                        // أخذ أكبر رقم موجود في السلة على أنه المجموع
-                        totalUSD = Math.max(...allPrices.map(p => parseFloat(p.replace(/[^0-9.]/g, ''))));
+                    // محاولة بديلة: البحث عن كل الأرقام التي تحتوي على كسور (مثل الأسعار) وأخذ أكبر رقم كإجمالي
+                    const allPrices = bodyText.match(/\d+[\.,]\d{2}/g);
+                    if(allPrices && allPrices.length > 0) {
+                        totalAmount = Math.max(...allPrices.map(p => parseFloat(p.replace(',', '.'))));
                     }
                 }
 
-                if(totalUSD <= 0) throw new Error("لم نجد أسعاراً في الرابط. تأكد أن الرابط هو رابط سلة عام.");
+                // إذا لم نجد أي سعر، نرفع خطأ يوضح عنوان الصفحة للتشخيص
+                if(totalAmount <= 0) {
+                    throw new Error(`لم نجد أسعاراً داخل الصفحة. عنوان الصفحة المسترجعة هو: "${pageTitle}". قد يتطلب الرابط تسجيل دخول أو واجه حظراً.`);
+                }
 
-                // الحسابات
+                // فرضية ذكية: إذا كان الرقم المستخرج كبيراً جداً (أكبر من 500) فهو بالدينار العراقي أصلاً، وإذا كان صغيراً فهو بالدولار
+                let totalUSD = totalAmount;
+                if(totalAmount > 500) {
+                    // إذا كان بالدينار العراقي (مثلاً السيرفر فتحه من العراق)، نحوله لدولار لكي تسير الحسابات حسب منطقك الثابت
+                    totalUSD = totalAmount / 1530;
+                }
+
+                // تطبيق المعادلة المالية الخاصة بك
                 const iqd = Math.ceil(totalUSD * 1530);
                 const commission = Math.ceil(iqd * 0.10);
                 const finalTotal = iqd + commission + 5000;
 
-                // العرض
+                // عرض النتيجة للزبون
                 document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
                 document.getElementById('breakdown').innerHTML = `
                     <p>قيمة المنتجات: ${iqd.toLocaleString()} د.ع</p>
@@ -86,7 +102,7 @@
                 document.getElementById('results-view').classList.remove('hidden');
 
             } catch (error) {
-                alert("حدث خطأ: " + error.message);
+                alert("تنبيه النظام: " + error.message);
                 location.reload();
             }
         }
