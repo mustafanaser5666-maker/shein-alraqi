@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حاسبة السعر الفورية - متجر الراقي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- الهيدر -->
+    <header class="bg-white border-b border-slate-100 px-4 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">ر</div>
+            <div>
+                <h1 class="text-sm font-bold text-slate-900">متجر الراقي</h1>
+                <p class="text-xs text-slate-500">شحن سريع وآمن إلى العراق</p>
+            </div>
+        </div>
+        <button class="border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-full hover:bg-slate-50 transition">EN 🌐</button>
+    </header>
+
+    <!-- شاشة رقم 1: حاسبة السعر (شاشة الإدخال) -->
+    <main id="calculator-view" class="max-w-md mx-auto w-full px-4 py-6 flex-1 flex flex-col justify-start gap-6">
+        <div class="text-center my-4">
+            <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">✨ حاسبة السعر الفورية الآلية</span>
+            <h2 class="text-3xl font-black text-slate-900 mt-3 leading-tight">شگد سعر سلتك؟</h2>
+            <p class="text-slate-500 mt-1 text-sm">الصق الرابط وسيقوم النظام بقراءة المنتجات وحسابها تلقائياً.</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="relative flex items-center">
+                <input id="cart-url" type="text" placeholder="https://m.shein.com/share/cart/..." 
+                       class="w-full pl-3 pr-12 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-left text-sm font-mono focus:outline-none focus:border-blue-500 transition">
+                <span class="absolute right-4 text-slate-400">🔗</span>
+            </div>
+            
+            <button onclick="processCart()" class="w-full bg-blue-900 hover:bg-blue-950 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99]">
+                <span>احسب السلة تلقائياً</span>
+                <span class="text-lg">←</span>
+            </button>
+        </div>
+
+        <div class="bg-blue-50/50 rounded-xl p-3 flex justify-between items-center text-xs font-medium text-slate-600 border border-blue-100/50">
+            <div class="flex items-center gap-2">📦 <span class="font-bold text-slate-800">SHEIN</span></div>
+            <div class="h-[2px] bg-dashed flex-1 mx-4 border-t-2 border-dashed border-slate-300"></div>
+            <div class="flex items-center gap-2">🇮🇶 <span class="font-bold text-slate-800">العراق</span></div>
+        </div>
+    </main>
+
+    <!-- شاشة رقم 2: الانتظار والتحليل (Loading) -->
+    <main id="loading-view" class="hidden max-w-md mx-auto w-full px-4 py-16 flex-1 flex flex-col items-center justify-center gap-4">
+        <div class="w-12 h-12 border-4 border-blue-900 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm font-bold text-slate-700 animate-pulse">جاري سحب منتجات شي إن وفك التشفير...</p>
+        <p class="text-xs text-slate-400 text-center px-6 leading-relaxed">المفتاح الذكي يقوم الآن بقراءة السلة وحساب التكلفة بالدينار العراقي.</p>
+    </main>
+
+    <!-- شاشة رقم 3: الفاتورة والمنتجات الحقيقية -->
+    <main id="results-view" class="hidden max-w-md mx-auto w-full px-4 py-6 flex-1 flex flex-col gap-4">
+        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 text-center relative overflow-hidden">
+            <p id="total-pieces-label" class="text-xs text-slate-500 font-bold">سلتك (0 قطعة)</p>
+            <h3 id="final-total-display" class="text-4xl font-black text-slate-900 my-2">0 <span class="text-lg font-bold text-blue-600">د.ع</span></h3>
+            <p class="text-xs text-slate-400">السعر شامل كلفة الشحن الدولي والعمولة الصافية</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-3 text-sm">
+            <div class="flex justify-between text-slate-500">
+                <span>المجموع الفرعي للمنتجات</span>
+                <span id="subtotal-display" class="font-medium text-slate-800">0 د.ع</span>
+            </div>
+            <div class="flex justify-between text-slate-500 pb-2 border-b border-slate-100">
+                <span>التوصيل داخل العراق</span>
+                <span id="delivery-display" class="font-medium text-slate-800">0 د.ع</span>
+            </div>
+            <div class="flex justify-between items-center pt-1 font-bold text-amber-700 bg-amber-50/60 p-2.5 rounded-lg">
+                <span>⚠️ العربون المطلوب (20%)</span>
+                <span id="deposit-display" class="text-base">0 د.ع</span>
+            </div>
+        </div>
+
+        <div>
+            <h4 class="text-xs font-bold text-slate-400 mb-2 px-1">القطع المكتشفة بالسلة:</h4>
+            <div id="products-list-container" class="flex flex-col gap-2">
+                <!-- المنتجات تُحقن هنا تلقائياً -->
+            </div>
+        </div>
+
+        <button onclick="showCalculator()" class="text-xs text-center text-blue-600 font-bold py-2 underline cursor-pointer">حساب سلة أخرى</button>
+    </main>
+
+    <!-- الفوتر الثابت والأزرار -->
+    <footer class="max-w-md mx-auto w-full p-4 bg-transparent sticky bottom-0 z-40">
+        <a id="whatsapp-floating" href="https://wa.me/9647XXXXXXXX" target="_blank" class="flex items-center justify-center w-14 h-14 bg-green-500 rounded-full shadow-lg text-white text-3xl float-left hover:bg-green-600 mb-2">💬</a>
+
+        <button id="whatsapp-order-btn" onclick="sendToWhatsapp()" class="hidden w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl flex items-center justify-between px-6 shadow-lg transition-all">
+            <span class="flex items-center gap-2 text-base">💬 اطلب السلة عبر الواتساب</span>
+            <span id="footer-price-tag" class="bg-green-600 px-3 py-1 rounded-lg text-sm">0 د.ع</span>
+        </button>
+    </footer>
+
+    <!-- 🧠 المحرك الذكي المربوط بمفتاحك الخاص -->
+    <script>
+        const SCRAPER_API_KEY = '5d8ff11fd876a67aa9ddcf97d922dd26'; // مفتاحك الفعال
+        
+        // ⚙️ ثوابت الحسابات الخاصة بمتجرك
+        const EXCHANGE_RATE = 1530;       // سعر صرف الدولار مقابل الدينار
+        const SHIPPING_PER_PIECE = 1500;  // كلفة شحن تقديرية للقطعة
+        const COMMISSION_PERCENT = 0.10;  // عمولتك 10%
+        const INTERNAL_DELIVERY = 5000;   // التوصيل داخل العراق
+
+        let calculatedResult = null;
+
+        async function processCart() {
+            const cartUrl = document.getElementById('cart-url').value.trim();
+            if(!cartUrl) return alert('الرجاء إدخال الرابط أولاً!');
+
+            // تنشيط شاشة التحميل
+            document.getElementById('calculator-view').classList.add('hidden');
+            document.getElementById('whatsapp-floating').classList.add('hidden');
+            document.getElementById('loading-view').classList.remove('hidden');
+
+            // إرسال الطلب لـ ScraperAPI ليقوم بجلب صفحة شي إن مع تفعيل الـ Javascript (render=true)
+            const targetApiUrl = `https://api.scraperapi.com/?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(cartUrl)}&render=true`;
+
+            try {
+                const response = await fetch(targetApiUrl);
+                const htmlText = await response.text();
+
+                // تحويل النص المستلم إلى DOM لقراءته برمجياً بسهولة
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+
+                // كلاسات شي إن الشائعة لقطع السلة التشاركية
+                const items = doc.querySelectorAll('.cart-item-render, [class*="product-item"], [class*="goods-item"]');
+                let extractedProducts = [];
+
+                items.forEach(item => {
+                    const title = item.querySelector('.product-title, [class*="title"]')?.innerText || 'منتج من شي إن';
+                    const img = item.querySelector('img')?.src || '';
+                    const priceRaw = item.querySelector('.price, [class*="price"]')?.innerText || '$0';
+                    const qtyRaw = item.querySelector('.quantity, [class*="qty"]')?.innerText || '1';
+
+                    const priceInUSD = parseFloat(priceRaw.replace(/[^0-9.]/g, '')) || 0;
+                    const quantity = parseInt(qtyRaw.replace(/[^0-9]/g, '')) || 1;
+
+                    if(priceInUSD > 0) {
+                        extractedProducts.push({ title, img, priceInUSD, quantity });
+                    }
+                });
+
+                // إذا لم يعثر الكود على كلاسات، نقوم بعملية احترازية لقراءة السعر الإجمالي إذا كان مكتوباً كـ نص في الصفحة
+                if(extractedProducts.length === 0) {
+                    const fallbackPriceMatch = htmlText.match(/class="[^"]*price[^"]*">\$([\d.]+)/);
+                    if(fallbackPriceMatch) {
+                        extractedProducts.push({
+                            title: "إجمالي محتويات السلة التشاركية",
+                            img: "",
+                            priceInUSD: parseFloat(fallbackPriceMatch[1]),
+                            quantity: 1
+                        });
+                    }
+                }
+
+                if(extractedProducts.length === 0) {
+                    throw new Error("لم نتمكن من قراءة المنتجات تلقائياً، قد تكون السلة خاصة أو الرابط غير صحيح.");
+                }
+
+                // 📊 إجراء العمليات الحسابية
+                let totalPieces = 0;
+                let totalProductsIQD = 0;
+
+                const processedProducts = extractedProducts.map(p => {
+                    totalPieces += p.quantity;
+                    const singleCostIQD = Math.ceil((p.priceInUSD * EXCHANGE_RATE) + SHIPPING_PER_PIECE);
+                    const totalCostIQD = singleCostIQD * p.quantity;
+                    totalProductsIQD += totalCostIQD;
+
+                    return {
+                        title: p.title,
+                        img: p.img,
+                        quantity: p.quantity,
+                        totalPriceIQD: totalCostIQD
+                    };
+                });
+
+                const commissionCost = Math.ceil(totalProductsIQD * COMMISSION_PERCENT);
+                const subtotalIQD = totalProductsIQD + commissionCost;
+                const finalTotalIQD = subtotalIQD + INTERNAL_DELIVERY;
+                const depositRequired = Math.ceil(finalTotalIQD * 0.20);
+
+                calculatedResult = { totalPieces, subtotalIQD, finalTotalIQD, depositRequired, processedProducts };
+
+                // 🌟 تحديث واجهة المستخدم بالبيانات الحقيقية
+                document.getElementById('total-pieces-label').innerText = `سلتك (${totalPieces} قطعة)`;
+                document.getElementById('final-total-display').innerHTML = `${finalTotalIQD.toLocaleString()} <span class="text-lg font-bold text-blue-600">د.ع</span>`;
+                document.getElementById('subtotal-display').innerText = `${subtotalIQD.toLocaleString()} د.ع`;
+                document.getElementById('delivery-display').innerText = `${INTERNAL_DELIVERY.toLocaleString()} د.ع`;
+                document.getElementById('deposit-display').innerText = `${depositRequired.toLocaleString()} د.ع`;
+                document.getElementById('footer-price-tag').innerText = `${finalTotalIQD.toLocaleString()} د.ع`;
+
+                const container = document.getElementById('products-list-container');
+                container.innerHTML = '';
+                
+                calculatedResult.processedProducts.forEach(p => {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex gap-3">
+                            <img src="${p.img || 'https://via.placeholder.com/120'}" class="w-16 h-20 object-cover rounded-lg bg-slate-100">
+                            <div class="flex-1 flex flex-col justify-between">
+                                <h5 class="text-xs font-bold text-slate-800 line-clamp-1">${p.title}</h5>
+                                <div class="flex justify-between items-end">
+                                    <span class="text-xs text-slate-400">الكمية: ${p.quantity}</span>
+                                    <span class="text-sm font-bold text-slate-900">${p.totalPriceIQD.toLocaleString()} د.ع</span>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                });
+
+                // الانتقال لشاشة النتائج
+                document.getElementById('loading-view').classList.add('hidden');
+                document.getElementById('results-view').classList.remove('hidden');
+                document.getElementById('whatsapp-order-btn').classList.remove('hidden');
+
+            } catch (error) {
+                alert(error.message);
+                showCalculator();
+            }
+        }
+
+        function showCalculator() {
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('whatsapp-order-btn').classList.add('hidden');
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById('calculator-view').classList.remove('hidden');
+            document.getElementById('whatsapp-floating').classList.remove('hidden');
+        }
+
+        function sendToWhatsapp() {
+            if(!calculatedResult) return;
+            const adminPhone = "9647XXXXXXXX"; // 👈 ضع رقمك هنا للطلب
+            let msg = `مرحباً متجر الراقي، أود تأكيد طلب السلة الآلي:\n\n`;
+            msg += `📦 القطع: ${calculatedResult.totalPieces}\n`;
+            msg += `💰 الإجمالي الكلي: ${calculatedResult.finalTotalIQD.toLocaleString()} د.ع\n`;
+            msg += `⚠️ العربون (20%): ${calculatedResult.depositRequired.toLocaleString()} د.ع\n\n`;
+            msg += `الرابط المستعمل: ${document.getElementById('cart-url').value}`;
+            window.open(`https://wa.me/${adminPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
