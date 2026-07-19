@@ -1,56 +1,89 @@
-<script>
-    const SCRAPER_API_KEY = '5d8ff11fd876a67aa9ddcf97d922dd26'; 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حاسبة متجر الراقي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
 
-    async function processCart() {
-        const cartUrl = document.getElementById('cart-url').value.trim();
-        if(!cartUrl) return alert('الرجاء إدخال الرابط أولاً!');
+    <!-- شاشة الإدخال -->
+    <main id="calculator-view" class="max-w-md mx-auto w-full px-4 py-10">
+        <h2 class="text-2xl font-bold text-center mb-6">احسب سعر سلتك</h2>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+            <input id="cart-url" type="text" placeholder="الصق رابط السلة هنا" 
+                   class="w-full p-4 bg-slate-50 border rounded-xl text-left font-mono text-sm">
+            <button onclick="processCart()" class="w-full bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg">احسب التكلفة</button>
+        </div>
+    </main>
 
-        // تغيير الواجهة
-        document.getElementById('calculator-view').classList.add('hidden');
-        document.getElementById('loading-view').classList.remove('hidden');
+    <!-- شاشة التحميل (مخفية افتراضياً) -->
+    <main id="loading-view" class="hidden max-w-md mx-auto w-full px-4 py-20 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
+        <p class="mt-4 text-slate-600">جاري فحص السلة من شي إن...</p>
+    </main>
 
-        // إضافة &premium=true لكسر حماية شي إن
-        // إضافة &country_code=us لجعل الطلب يبدو وكأنه من أمريكا
-        const targetApiUrl = `https://api.scraperapi.com/?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(cartUrl)}&render=true&premium=true&country_code=us`;
+    <!-- شاشة النتائج (مخفية افتراضياً) -->
+    <main id="results-view" class="hidden max-w-md mx-auto w-full px-4 py-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+            <h3 class="text-slate-500 text-sm">إجمالي السعر للزبون</h3>
+            <h1 id="final-total" class="text-4xl font-black my-4 text-blue-900">0 د.ع</h1>
+            <div id="breakdown" class="text-right text-sm text-slate-600 border-t pt-4 space-y-2"></div>
+        </div>
+        <button onclick="location.reload()" class="w-full mt-4 py-3 text-slate-400 underline text-sm">حساب سلة أخرى</button>
+    </main>
 
-        try {
-            const response = await fetch(targetApiUrl);
-            const htmlText = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
+    <script>
+        const SCRAPER_API_KEY = '5d8ff11fd876a67aa9ddcf97d922dd26'; 
 
-            // بحث شامل عن الأسعار في كامل الصفحة
-            // نقوم بالبحث عن أي نص يحتوي علامة $ وأرقام
-            const bodyText = doc.body.innerText;
-            const priceMatches = bodyText.match(/\$\s?\d+\.?\d*/g); 
-            
-            let totalUSD = 0;
-            if(priceMatches && priceMatches.length > 0) {
-                // نأخذ المبالغ (نستثني أي أرقام صغيرة جداً قد تكون غير منطقية)
-                priceMatches.forEach(p => {
-                    const val = parseFloat(p.replace(/[^0-9.]/g, ''));
-                    if(val > 5) totalUSD += val; // فرضية أن سعر أي قطعة لا يقل عن 5 دولار لتجنب أرقام الخصم
-                });
+        async function processCart() {
+            const cartUrl = document.getElementById('cart-url').value.trim();
+            if(!cartUrl) return alert('الرجاء إدخال الرابط أولاً!');
+
+            document.getElementById('calculator-view').classList.add('hidden');
+            document.getElementById('loading-view').classList.remove('hidden');
+
+            try {
+                const targetApiUrl = `https://api.scraperapi.com/?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(cartUrl)}&render=true&premium=true&country_code=us`;
+                
+                const response = await fetch(targetApiUrl);
+                const htmlText = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+
+                const bodyText = doc.body.innerText;
+                const priceMatches = bodyText.match(/\$\s?\d+\.?\d*/g); 
+                
+                let totalUSD = 0;
+                if(priceMatches && priceMatches.length > 0) {
+                    priceMatches.forEach(p => {
+                        const val = parseFloat(p.replace(/[^0-9.]/g, ''));
+                        if(val > 5) totalUSD += val;
+                    });
+                }
+
+                if(totalUSD === 0) throw new Error("لم نجد أسعاراً، حاول إدخال السعر يدوياً في المرة القادمة.");
+
+                const iqd = Math.ceil(totalUSD * 1530);
+                const commission = Math.ceil(iqd * 0.10);
+                const finalTotal = iqd + commission + 5000;
+
+                document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
+                document.getElementById('breakdown').innerHTML = `
+                    <p>قيمة المنتجات: ${iqd.toLocaleString()} د.ع</p>
+                    <p>العمولة (10%): ${commission.toLocaleString()} د.ع</p>
+                    <p>التوصيل: 5,000 د.ع</p>
+                `;
+
+                document.getElementById('loading-view').classList.add('hidden');
+                document.getElementById('results-view').classList.remove('hidden');
+
+            } catch (error) {
+                alert("حدث خطأ: " + error.message);
+                location.reload();
             }
-
-            if(totalUSD === 0) {
-                throw new Error("لم نجد أسعاراً في الرابط. قد تكون السلة خاصة أو الرابط يتطلب تسجيل دخول.");
-            }
-
-            // الحسابات
-            const EXCHANGE_RATE = 1530;
-            const iqd = Math.ceil(totalUSD * EXCHANGE_RATE);
-            const commission = Math.ceil(iqd * 0.10);
-            const finalTotal = iqd + commission + 5000;
-
-            // إظهار النتيجة (نفس كودك السابق)
-            document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
-            document.getElementById('loading-view').classList.add('hidden');
-            document.getElementById('results-view').classList.remove('hidden');
-
-        } catch (error) {
-            alert("خطأ: " + error.message);
-            location.reload();
         }
-    }
-</script>
+    </script>
+</body>
+</html>
