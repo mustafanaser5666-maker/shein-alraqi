@@ -12,7 +12,7 @@
     <main id="calculator-view" class="max-w-md mx-auto w-full px-4 py-10">
         <h2 class="text-2xl font-bold text-center mb-6 text-blue-900">حاسبة متجر الراقي</h2>
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
-            <input id="cart-url" type="text" placeholder="الصق رابط السلة هنا" 
+            <input id="cart-url" type="text" placeholder="الصق رابط السلة هنا (مثال: https://www.shein.com/.....)" 
                    class="w-full p-4 bg-slate-50 border rounded-xl text-left font-mono text-sm">
             <button onclick="processCart()" class="w-full bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg">احسب السعر الآن</button>
         </div>
@@ -35,65 +35,70 @@
     </main>
 
     <script>
-        const SCRAPER_API_KEY = '5d8ff11fd876a67aa9ddcf97d922dd26'; 
-
+        // مفتاح API الخاص بـ Shein Cart API على منصة RapidAPI
+        // قم بالتسجيل في RapidAPI واشترك في خدمة Shein Cart API للحصول على هذا المفتاح
+        const RAPIDAPI_KEY = 'YOUR_RAPIDAPI_KEY_HERE'; // ضع مفتاحك هنا
+        
         async function processCart() {
             const cartUrl = document.getElementById('cart-url').value.trim();
+            
+            // التحقق من صحة الرابط
             if(!cartUrl) return alert('الرجاء إدخال الرابط!');
+            if(!cartUrl.includes('shein.com')) return alert('الرجاء إدخال رابط صحيح من متجر شي إن!');
 
             document.getElementById('calculator-view').classList.add('hidden');
             document.getElementById('loading-view').classList.remove('hidden');
 
             try {
-                // طلب الصفحة مع تفعيل التصفح الحقيقي والموبايل
-                const targetApiUrl = `https://api.scraperapi.com/?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(cartUrl)}&render=true&premium=true&device_type=mobile`;
-                
-                const response = await fetch(targetApiUrl);
-                const htmlText = await response.text();
-                
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlText, 'text/html');
-                const pageTitle = doc.title || "لا يوجد عنوان";
+                // 1. استخراج معرف السلة (Cart ID) من الرابط
+                // مثال: https://www.shein.com/ShoppingCart?cart_id=12345678
+                const cartIdMatch = cartUrl.match(/cart_id=(\d+)/);
+                if (!cartIdMatch) {
+                    throw new Error('لم نتمكن من العثور على معرف السلة في الرابط. تأكد من نسخ الرابط بالكامل.');
+                }
+                const cartId = cartIdMatch[1];
 
-                // استخراج النصوص بالكامل
-                const bodyText = doc.body ? doc.body.innerText : "";
-                
-                // البحث عن كلمة Total أو Subtotal أو المجموع يليها أي رقم (لجميع العملات)
-                const totalMatch = bodyText.match(/(?:Total|Subtotal|المجموع|الإجمالي)[\s\S]{0,100}?(\d+[\.,]\d+)/i);
-                
-                let totalAmount = 0;
+                // 2. إرسال الطلب إلى واجهة برمجة تطبيقات شي إن للحصول على بيانات السلة
+                const response = await fetch(`https://shein-cart-api.p.rapidapi.com/cart?cart_id=${cartId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-RapidAPI-Key': RAPIDAPI_KEY,
+                        'X-RapidAPI-Host': 'shein-cart-api.p.rapidapi.com'
+                    }
+                });
 
-                if (totalMatch && totalMatch[1]) {
-                    totalAmount = parseFloat(totalMatch[1].replace(',', '.'));
+                if (!response.ok) {
+                    throw new Error(`فشل جلب البيانات (حالة ${response.status}). تأكد من صحة المفتاح واشتراكك في الخدمة.`);
+                }
+
+                const data = await response.json();
+
+                // 3. استخراج المبلغ الإجمالي من البيانات المسترجعة
+                // يجب تعديل هذا الجزء حسب هيكل البيانات الذي ترجعه الخدمة
+                let totalAmountUSD = 0;
+                if (data && data.data && data.data.totalAmount) {
+                    totalAmountUSD = parseFloat(data.data.totalAmount);
                 } else {
-                    // محاولة بديلة: البحث عن كل الأرقام التي تحتوي على كسور (مثل الأسعار) وأخذ أكبر رقم كإجمالي
-                    const allPrices = bodyText.match(/\d+[\.,]\d{2}/g);
-                    if(allPrices && allPrices.length > 0) {
-                        totalAmount = Math.max(...allPrices.map(p => parseFloat(p.replace(',', '.'))));
+                    // محاولة بديلة: جمع أسعار المنتجات
+                    if (data && data.data && data.data.products) {
+                        totalAmountUSD = data.data.products.reduce((sum, product) => sum + parseFloat(product.price || 0), 0);
                     }
                 }
 
-                // إذا لم نجد أي سعر، نرفع خطأ يوضح عنوان الصفحة للتشخيص
-                if(totalAmount <= 0) {
-                    throw new Error(`لم نجد أسعاراً داخل الصفحة. عنوان الصفحة المسترجعة هو: "${pageTitle}". قد يتطلب الرابط تسجيل دخول أو واجه حظراً.`);
+                if (totalAmountUSD <= 0) {
+                    throw new Error('لم نتمكن من حساب المبلغ الإجمالي. قد تكون السلة فارغة أو البيانات غير متوفرة.');
                 }
 
-                // فرضية ذكية: إذا كان الرقم المستخرج كبيراً جداً (أكبر من 500) فهو بالدينار العراقي أصلاً، وإذا كان صغيراً فهو بالدولار
-                let totalUSD = totalAmount;
-                if(totalAmount > 500) {
-                    // إذا كان بالدينار العراقي (مثلاً السيرفر فتحه من العراق)، نحوله لدولار لكي تسير الحسابات حسب منطقك الثابت
-                    totalUSD = totalAmount / 1530;
-                }
-
-                // تطبيق المعادلة المالية الخاصة بك
-                const iqd = Math.ceil(totalUSD * 1530);
+                // 4. تطبيق المعادلة المالية الخاصة بك
+                const iqd = Math.ceil(totalAmountUSD * 1530);
                 const commission = Math.ceil(iqd * 0.10);
                 const finalTotal = iqd + commission + 5000;
 
-                // عرض النتيجة للزبون
+                // 5. عرض النتيجة للزبون
                 document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
                 document.getElementById('breakdown').innerHTML = `
-                    <p>قيمة المنتجات: ${iqd.toLocaleString()} د.ع</p>
+                    <p>قيمة المنتجات (بالدولار): $${totalAmountUSD.toFixed(2)}</p>
+                    <p>قيمة المنتجات (بالدينار): ${iqd.toLocaleString()} د.ع</p>
                     <p>العمولة (10%): ${commission.toLocaleString()} د.ع</p>
                     <p>التوصيل: 5,000 د.ع</p>
                 `;
