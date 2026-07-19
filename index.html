@@ -6,247 +6,333 @@
     <title>حاسبة متجر الراقي</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-gradient-to-br from-blue-50 to-slate-100 min-h-screen">
 
-    <!-- شاشة الإدخال -->
+    <!-- شاشة الإدخال الرئيسية -->
     <main id="calculator-view" class="max-w-md mx-auto w-full px-4 py-10">
-        <h2 class="text-2xl font-bold text-center mb-6 text-blue-900">حاسبة متجر الراقي</h2>
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
-            <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl text-center">
-                <p>📋 الصق رابط المنتج أو السلة من شي إن</p>
-                <p class="text-xs mt-1">مثال: https://www.shein.com/p-12345678.html</p>
+        <div class="bg-white rounded-3xl shadow-xl p-6 border border-slate-100">
+            <div class="text-center mb-6">
+                <div class="inline-block bg-blue-100 p-3 rounded-2xl mb-3">
+                    <svg class="w-12 h-12 text-blue-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-blue-900">حاسبة متجر الراقي</h1>
+                <p class="text-slate-500 text-sm mt-1">احسب تكلفة طلبك من شي إن بسهولة</p>
             </div>
-            <input id="cart-url" type="text" placeholder="الصق الرابط هنا" 
-                   class="w-full p-4 bg-slate-50 border rounded-xl text-left font-mono text-sm">
-            <button onclick="processCart()" class="w-full bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-800 transition">
-                احسب السعر الآن
+
+            <!-- طريقة الإدخال الأولى: السعر بالدولار -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    📦 أدخل سعر المنتج بالدولار
+                </label>
+                <div class="relative">
+                    <span class="absolute right-3 top-3 text-slate-400">$</span>
+                    <input id="price-usd" type="number" step="0.01" min="0" 
+                           placeholder="مثال: 25.99" 
+                           class="w-full p-3 pr-8 bg-slate-50 border-2 border-slate-200 rounded-xl text-lg font-bold text-blue-900 focus:border-blue-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <!-- أو طريقة الإدخال الثانية: رابط المنتج -->
+            <div class="mb-6">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="h-px flex-1 bg-slate-200"></div>
+                    <span class="text-xs text-slate-400">أو</span>
+                    <div class="h-px flex-1 bg-slate-200"></div>
+                </div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">
+                    🔗 الصق رابط المنتج من شي إن
+                </label>
+                <input id="product-url" type="text" 
+                       placeholder="https://www.shein.com/p-12345678.html" 
+                       class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm focus:border-blue-500 focus:outline-none transition">
+                <button onclick="extractPriceFromUrl()" 
+                        class="w-full mt-2 bg-slate-100 text-slate-700 font-bold py-2 rounded-xl text-sm hover:bg-slate-200 transition">
+                    محاولة استخراج السعر من الرابط
+                </button>
+            </div>
+
+            <!-- زر الحساب -->
+            <button onclick="calculatePrice()" 
+                    class="w-full bg-blue-900 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-blue-800 transition transform hover:scale-[1.02] active:scale-[0.98]">
+                احسب السعر النهائي
+            </button>
+
+            <!-- معلومات إضافية -->
+            <div class="mt-4 p-3 bg-blue-50 rounded-xl text-xs text-slate-600">
+                <p class="font-bold text-blue-900">📌 ملاحظة:</p>
+                <p>• العمولة: 10% من قيمة المنتجات</p>
+                <p>• التوصيل: 5,000 دينار عراقي</p>
+                <p>• سعر الصرف: 1 دولار = 1,530 دينار</p>
+            </div>
+        </div>
+
+        <!-- سلة المنتجات (إضافة متعددة) -->
+        <div class="mt-4 bg-white rounded-3xl shadow-xl p-4 border border-slate-100">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-slate-700">🛒 سلة المنتجات</h3>
+                <span id="item-count" class="bg-blue-100 text-blue-900 text-xs font-bold px-3 py-1 rounded-full">0 منتج</span>
+            </div>
+            <div id="items-list" class="space-y-2 max-h-60 overflow-y-auto">
+                <p class="text-slate-400 text-sm text-center py-4">أضف منتجات لحساب السعر الإجمالي</p>
+            </div>
+            <button onclick="addItem()" 
+                    class="w-full mt-3 bg-slate-100 text-slate-700 font-bold py-2 rounded-xl text-sm hover:bg-slate-200 transition">
+                + إضافة منتج آخر
             </button>
         </div>
     </main>
 
-    <!-- شاشة التحميل -->
-    <main id="loading-view" class="hidden max-w-md mx-auto w-full px-4 py-20 text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900 mx-auto"></div>
-        <p id="loading-status" class="mt-4 text-slate-600 font-bold">جاري معالجة الرابط...</p>
+    <!-- شاشة النتائج -->
+    <main id="results-view" class="hidden max-w-md mx-auto w-full px-4 py-10">
+        <div class="bg-white rounded-3xl shadow-xl p-6 border border-slate-100">
+            <div class="text-center">
+                <div class="inline-block bg-green-100 p-3 rounded-2xl mb-3">
+                    <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-sm text-slate-500">إجمالي السعر للزبون</h2>
+                <h1 id="final-total" class="text-5xl font-black my-3 text-blue-900">0 د.ع</h1>
+                <p id="total-usd" class="text-sm text-slate-400">$0.00</p>
+            </div>
+
+            <div class="border-t border-slate-200 my-4"></div>
+
+            <!-- تفاصيل الحساب -->
+            <div id="breakdown" class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-600">قيمة المنتجات</span>
+                    <span id="products-cost" class="font-bold">0 د.ع</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">العمولة (10%)</span>
+                    <span id="commission-amount" class="font-bold">0 د.ع</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-600">رسوم التوصيل</span>
+                    <span id="delivery-amount" class="font-bold">5,000 د.ع</span>
+                </div>
+                <div class="border-t border-slate-200 pt-3 flex justify-between text-lg font-bold">
+                    <span class="text-blue-900">المجموع الكلي</span>
+                    <span id="grand-total" class="text-blue-900">0 د.ع</span>
+                </div>
+            </div>
+
+            <!-- قائمة المنتجات -->
+            <div id="products-summary" class="mt-4 border-t border-slate-200 pt-4 text-xs text-slate-500"></div>
+
+            <div class="flex gap-2 mt-6">
+                <button onclick="location.reload()" 
+                        class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200 transition">
+                    حساب جديد
+                </button>
+                <button onclick="printResults()" 
+                        class="flex-1 bg-blue-900 text-white font-bold py-3 rounded-xl hover:bg-blue-800 transition">
+                    طباعة
+                </button>
+            </div>
+        </div>
     </main>
 
-    <!-- شاشة النتائج -->
-    <main id="results-view" class="hidden max-w-md mx-auto w-full px-4 py-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
-            <h3 class="text-slate-500 text-sm">إجمالي السعر للزبون</h3>
-            <h1 id="final-total" class="text-4xl font-black my-4 text-blue-900">0 د.ع</h1>
-            <div id="breakdown" class="text-right text-sm text-slate-600 border-t pt-4 space-y-2"></div>
-            <div id="products-list" class="text-right text-xs text-slate-500 border-t mt-4 pt-4"></div>
-        </div>
-        <button onclick="location.reload()" class="w-full mt-4 py-3 text-slate-400 underline text-sm hover:text-slate-600">حساب سلة أخرى</button>
-    </sch>
-
     <script>
-        // ====== الحل الجديد: استخدام API مفتوحة لجلب الأسعار ======
-        
-        // 1. دالة لاستخراج معرف المنتج من الرابط
-        function extractProductIds(url) {
-            const ids = [];
+        // مصفوفة لتخزين المنتجات
+        let products = [];
+
+        // دالة لإضافة منتج جديد
+        function addItem(price = null) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex gap-2 items-center bg-slate-50 p-2 rounded-xl';
+            itemDiv.innerHTML = `
+                <input type="number" step="0.01" min="0" placeholder="السعر $" 
+                       value="${price || ''}" 
+                       class="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                <button onclick="this.parentElement.remove(); updateTotal()" 
+                        class="text-red-400 hover:text-red-600 p-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
             
-            // محاولة استخراج goods_id من الرابط
-            const goodsMatches = url.match(/goods_id=(\d+)/g);
-            if (goodsMatches) {
-                goodsMatches.forEach(match => {
-                    const id = match.match(/\d+/)[0];
-                    ids.push(id);
-                });
-            }
+            const list = document.getElementById('items-list');
+            // إزالة رسالة "أضف منتج"
+            const emptyMsg = list.querySelector('.text-slate-400');
+            if (emptyMsg) emptyMsg.remove();
             
-            // محاولة استخراج من p-XXXXX
-            const pMatches = url.match(/\/p-(\d+)/g);
-            if (pMatches) {
-                pMatches.forEach(match => {
-                    const id = match.match(/\d+/)[0];
-                    if (!ids.includes(id)) ids.push(id);
-                });
-            }
+            list.appendChild(itemDiv);
             
-            // محاولة استخراج أي رقم طويل (8-12 رقم)
-            const numberMatches = url.match(/\b(\d{8,12})\b/g);
-            if (numberMatches) {
-                numberMatches.forEach(id => {
-                    if (!ids.includes(id)) ids.push(id);
-                });
-            }
+            // إضافة مستمع للأحداث لتحديث المجموع
+            const input = itemDiv.querySelector('input');
+            input.addEventListener('input', updateTotal);
+            input.addEventListener('change', updateTotal);
             
-            return ids;
+            updateTotal();
         }
 
-        // 2. دالة لجلب سعر المنتج من متجر شي إن مباشرة (طريقة بديلة)
-        async function fetchProductPrice(productId) {
-            try {
-                // استخدام خدمة Proxy مجانية لتجاوز CORS
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.shein.com/product/${productId}`)}`;
-                
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('فشل جلب الصفحة');
-                
-                const html = await response.text();
-                
-                // استخراج السعر من الكود (البحث عن JSON المخفي)
-                const priceMatch = html.match(/"salePrice":(\d+\.?\d*)/);
-                if (priceMatch) {
-                    return parseFloat(priceMatch[1]);
+        // دالة لتحديث المجموع الكلي
+        function updateTotal() {
+            const inputs = document.querySelectorAll('#items-list input');
+            let total = 0;
+            let validItems = 0;
+            
+            inputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) {
+                    total += val;
+                    validItems++;
                 }
-                
-                // محاولة أخرى: البحث عن السعر في النص
-                const priceTextMatch = html.match(/\$(\d+\.\d{2})/);
-                if (priceTextMatch) {
-                    return parseFloat(priceTextMatch[1]);
-                }
-                
-                return null;
-            } catch (error) {
-                console.error(`خطأ في جلب المنتج ${productId}:`, error);
-                return null;
+            });
+            
+            document.getElementById('item-count').textContent = `${validItems} منتج`;
+            
+            // تحديث السعر المعروض في الحقل الرئيسي
+            if (validItems === 1) {
+                document.getElementById('price-usd').value = total.toFixed(2);
+            } else if (validItems > 1) {
+                document.getElementById('price-usd').value = total.toFixed(2);
             }
+            
+            return total;
         }
 
-        // 3. دالة رئيسية لمعالجة السلة
-        async function processCart() {
-            const cartUrl = document.getElementById('cart-url').value.trim();
+        // دالة حساب السعر النهائي
+        function calculatePrice() {
+            // جمع الأسعار من جميع الحقول
+            let totalUSD = 0;
+            const inputs = document.querySelectorAll('#items-list input');
             
-            if (!cartUrl) {
-                return alert('الرجاء إدخال الرابط!');
-            }
-
-            // إخفاء شاشة الإدخال وإظهار شاشة التحميل
-            document.getElementById('calculator-view').classList.add('hidden');
-            document.getElementById('loading-view').classList.remove('hidden');
-            document.getElementById('loading-status').innerText = 'جاري استخراج معرفات المنتجات...';
-
-            try {
-                // استخراج معرفات المنتجات
-                const productIds = extractProductIds(cartUrl);
-                
-                if (productIds.length === 0) {
-                    throw new Error('لم نتمكن من العثور على معرفات المنتجات في الرابط');
+            inputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) {
+                    totalUSD += val;
                 }
-
-                document.getElementById('loading-status').innerText = `تم العثور على ${productIds.length} منتج(ة). جاري جلب الأسعار...`;
-
-                // جلب أسعار المنتجات
-                let totalUSD = 0;
-                const products = [];
-
-                for (const id of productIds) {
-                    document.getElementById('loading-status').innerText = `جاري جلب سعر المنتج ${id}...`;
-                    
-                    // استخدام واجهة برمجة تطبيقات مجانية (بديلة)
-                    try {
-                        const price = await fetchProductPrice(id);
-                        if (price && price > 0) {
-                            totalUSD += price;
-                            products.push({ id, price });
-                        }
-                    } catch (error) {
-                        console.warn(`فشل جلب المنتج ${id}`, error);
+            });
+            
+            // إذا لم توجد منتجات، استخدم السعر من الحقل الرئيسي
+            if (totalUSD === 0) {
+                const mainPrice = parseFloat(document.getElementById('price-usd').value);
+                if (!isNaN(mainPrice) && mainPrice > 0) {
+                    totalUSD = mainPrice;
+                    // أضفه كمنتج
+                    if (document.querySelectorAll('#items-list input').length === 0) {
+                        addItem(mainPrice);
                     }
                 }
-
-                if (totalUSD === 0) {
-                    throw new Error('لم نتمكن من جلب أسعار المنتجات. قد يكون الرابط غير صحيح.');
-                }
-
-                // تطبيق المعادلة المالية
-                const iqd = Math.ceil(totalUSD * 1530);
-                const commission = Math.ceil(iqd * 0.10);
-                const delivery = 5000;
-                const finalTotal = iqd + commission + delivery;
-
-                // عرض النتائج
-                document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
-                
-                document.getElementById('breakdown').innerHTML = `
-                    <p>💰 قيمة المنتجات (بالدولار): $${totalUSD.toFixed(2)}</p>
-                    <p>💰 قيمة المنتجات (بالدينار): ${iqd.toLocaleString()} د.ع</p>
-                    <p>📊 العمولة (10%): ${commission.toLocaleString()} د.ع</p>
-                    <p>🚚 التوصيل: ${delivery.toLocaleString()} د.ع</p>
-                `;
-
-                // عرض تفاصيل المنتجات
-                let productsHtml = '<p class="font-bold text-slate-600 mb-2">📦 تفاصيل المنتجات:</p>';
-                products.forEach((p, index) => {
-                    productsHtml += `<p>${index + 1}. المنتج ${p.id}: $${p.price.toFixed(2)}</p>`;
-                });
-                document.getElementById('products-list').innerHTML = productsHtml;
-
-                // إظهار النتائج
-                document.getElementById('loading-view').classList.add('hidden');
-                document.getElementById('results-view').classList.remove('hidden');
-
-            } catch (error) {
-                console.error('خطأ:', error);
-                alert("❌ تنبيه النظام: " + error.message);
-                location.reload();
             }
-        }
-
-        // ====== حل بديل يدوي للمستخدم ======
-        // إذا لم تعمل الطريقة التلقائية، نعطي المستخدم خيار إدخال السعر يدوياً
-        function showManualEntry() {
-            const manualDiv = document.createElement('div');
-            manualDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-            manualDiv.innerHTML = `
-                <div class="bg-white rounded-2xl p-6 max-w-md w-full">
-                    <h3 class="text-xl font-bold mb-4 text-center">إدخال السعر يدوياً</h3>
-                    <p class="text-sm text-slate-600 mb-4">لم نتمكن من جلب السعر تلقائياً. الرجاء إدخال السعر بالدولار:</p>
-                    <input id="manual-price" type="number" step="0.01" placeholder="مثال: 25.99" 
-                           class="w-full p-3 border rounded-xl mb-4">
-                    <button onclick="calculateManualPrice()" 
-                            class="w-full bg-blue-900 text-white font-bold py-3 rounded-xl">
-                        احسب السعر
-                    </button>
-                    <button onclick="this.parentElement.parentElement.remove()" 
-                            class="w-full mt-2 text-slate-400 text-sm underline">
-                        إلغاء
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(manualDiv);
-        }
-
-        function calculateManualPrice() {
-            const priceInput = document.getElementById('manual-price');
-            const price = parseFloat(priceInput.value);
             
-            if (!price || price <= 0) {
-                return alert('الرجاء إدخال سعر صحيح');
+            if (totalUSD <= 0) {
+                alert('الرجاء إدخال سعر المنتج بالدولار');
+                return;
             }
 
-            const iqd = Math.ceil(price * 1530);
+            // تطبيق المعادلة
+            const iqd = Math.ceil(totalUSD * 1530);
             const commission = Math.ceil(iqd * 0.10);
             const delivery = 5000;
             const finalTotal = iqd + commission + delivery;
 
-            // إغلاق النافذة المنبثقة
-            document.querySelector('.fixed.inset-0').remove();
-
             // عرض النتائج
             document.getElementById('final-total').innerText = finalTotal.toLocaleString() + " د.ع";
-            document.getElementById('breakdown').innerHTML = `
-                <p>💰 قيمة المنتجات (بالدولار): $${price.toFixed(2)}</p>
-                <p>💰 قيمة المنتجات (بالدينار): ${iqd.toLocaleString()} د.ع</p>
-                <p>📊 العمولة (10%): ${commission.toLocaleString()} د.ع</p>
-                <p>🚚 التوصيل: ${delivery.toLocaleString()} د.ع</p>
-            `;
-            document.getElementById('products-list').innerHTML = '<p class="text-slate-400">تم الإدخال يدوياً</p>';
+            document.getElementById('total-usd').innerText = `$${totalUSD.toFixed(2)}`;
+            document.getElementById('products-cost').innerText = iqd.toLocaleString() + " د.ع";
+            document.getElementById('commission-amount').innerText = commission.toLocaleString() + " د.ع";
+            document.getElementById('delivery-amount').innerText = delivery.toLocaleString() + " د.ع";
+            document.getElementById('grand-total').innerText = finalTotal.toLocaleString() + " د.ع";
 
-            document.getElementById('loading-view').classList.add('hidden');
+            // عرض قائمة المنتجات
+            let productsHtml = '';
+            const items = document.querySelectorAll('#items-list input');
+            let index = 1;
+            items.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val > 0) {
+                    productsHtml += `<p>${index}. $${val.toFixed(2)}</p>`;
+                    index++;
+                }
+            });
+            document.getElementById('products-summary').innerHTML = productsHtml ? 
+                `<p class="font-bold mb-2">📦 المنتجات:</p>${productsHtml}` : '';
+
+            // التبديل إلى شاشة النتائج
+            document.getElementById('calculator-view').classList.add('hidden');
             document.getElementById('results-view').classList.remove('hidden');
         }
 
-        // إضافة زر للإدخال اليدوي عند الفشل
-        window.addEventListener('error', function(e) {
-            if (e.message.includes('فشل')) {
-                showManualEntry();
+        // دالة محاولة استخراج السعر من الرابط
+        function extractPriceFromUrl() {
+            const url = document.getElementById('product-url').value.trim();
+            if (!url) {
+                alert('الرجاء إدخال رابط المنتج');
+                return;
+            }
+
+            // محاولة استخراج سعر من الرابط (طريقة بديلة)
+            // بعض الروابط تحتوي على السعر في النص
+            const priceMatch = url.match(/\$(\d+\.?\d*)/);
+            if (priceMatch) {
+                const price = parseFloat(priceMatch[1]);
+                if (price > 0) {
+                    document.getElementById('price-usd').value = price;
+                    addItem(price);
+                    alert(`تم استخراج السعر: $${price.toFixed(2)}`);
+                    return;
+                }
+            }
+
+            // محاولة استخراج معرف المنتج وعرض رسالة
+            const idMatch = url.match(/\d{8,}/);
+            if (idMatch) {
+                alert(`تم العثور على معرف المنتج: ${idMatch[0]}\nالرجاء إدخال السعر يدوياً`);
+                document.getElementById('price-usd').focus();
+            } else {
+                alert('لم نتمكن من استخراج السعر من الرابط. الرجاء إدخال السعر يدوياً.');
+                document.getElementById('price-usd').focus();
+            }
+        }
+
+        // دالة الطباعة
+        function printResults() {
+            window.print();
+        }
+
+        // إضافة منتج افتراضي عند التحميل
+        window.onload = function() {
+            addItem();
+        };
+
+        // السماح بإدخال السعر بالضغط على Enter
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const active = document.activeElement;
+                if (active && (active.id === 'price-usd' || active.type === 'number')) {
+                    calculatePrice();
+                }
             }
         });
     </script>
+
+    <!-- تنسيق للطباعة -->
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #results-view, #results-view * {
+                visibility: visible;
+            }
+            #results-view {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20px;
+            }
+            button {
+                display: none !important;
+            }
+        }
+    </style>
 </body>
 </html>
